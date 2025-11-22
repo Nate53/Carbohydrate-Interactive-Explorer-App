@@ -135,8 +135,8 @@
             </div>
 
             <!-- QUIZ MODE OVERLAY -->
-            <div id="overlay-quiz" class="absolute top-6 left-1/2 transform -translate-x-1/2 pointer-events-none hidden z-30 w-full max-w-lg px-4">
-                <div class="bg-white/95 backdrop-blur shadow-2xl rounded-xl p-5 border-2 border-indigo-500 pointer-events-auto flex flex-col gap-3">
+            <div id="overlay-quiz" class="absolute top-6 right-6 pointer-events-none hidden z-30 flex flex-col items-end">
+                <div class="bg-white/95 backdrop-blur shadow-2xl rounded-xl p-5 border-2 border-indigo-500 pointer-events-auto w-80 flex flex-col gap-3">
                     <div class="flex justify-between items-center">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">AP Bio Challenge</span>
                         <span id="quiz-score" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold">Score: 0</span>
@@ -817,7 +817,7 @@
         function setMode(m) {
             mode = m;
             document.getElementById('overlay-learn').style.display = m === 'learn' ? 'flex' : 'none';
-            document.getElementById('overlay-quiz').style.display = m === 'quiz' ? 'block' : 'none';
+            document.getElementById('overlay-quiz').style.display = m === 'quiz' ? 'flex' : 'none';
             document.getElementById('overlay-build').style.display = m === 'build' ? 'flex' : 'none';
             
             ['learn', 'build', 'quiz'].forEach(k => {
