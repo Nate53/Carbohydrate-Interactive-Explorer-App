@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Carbohydrate Lab: AP/IB Bio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { touch-action: none; user-select: none; overflow: hidden; }
+        canvas { touch-action: none; }
+        .slide-enter { animation: slideIn 0.5s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Glassmorphism for panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col font-sans text-slate-800">
+
+    <!-- Navigation Bar -->
+    <header class="bg-slate-900 text-white p-3 shadow-lg shrink-0 z-20 flex justify-between items-center border-b border-slate-700">
+        <div class="flex items-center gap-3">
+            <div class="flex flex-col">
+                <span class="text-xl font-bold text-emerald-400 tracking-tight">BioBuilder</span>
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">AP/IB Biology • Carbohydrates</span>
+            </div>
+        </div>
+        <div class="flex gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700">
+            <button onclick="setMode('learn')" id="btn-learn" class="px-4 py-1 rounded transition font-semibold bg-emerald-600 text-white shadow-lg shadow-emerald-900/50">1. Learn</button>
+            <button onclick="setMode('build')" id="btn-build" class="px-4 py-1 rounded transition font-semibold hover:bg-slate-700 text-slate-300">2. Free Build</button>
+            <button onclick="setMode('quiz')" id="btn-quiz" class="px-4 py-1 rounded transition font-semibold hover:bg-slate-700 text-slate-300">3. Challenge</button>
+        </div>
+    </header>
+
+    <div class="flex-grow flex relative">
+        
+        <!-- Sidebar -->
+        <aside class="w-24 md:w-32 bg-white shadow-xl z-10 flex flex-col items-center py-4 border-r border-slate-200 shrink-0 overflow-y-auto">
+            
+            <!-- Anabolic Section -->
+            <div class="mb-6 flex flex-col items-center w-full">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">Anabolism<br><span class="text-[9px] normal-case font-normal text-slate-400">(Builds Bonds)</span></h3>
+                
+                <div class="flex flex-col gap-4 w-full items-center">
+                    <div class="source-item group cursor-grab active:cursor-grabbing relative transition-transform hover:scale-105" onmousedown="startDragSpawn(event, 'glucose')" ontouchstart="startDragSpawn(event, 'glucose')">
+                        <div class="w-12 h-12 rounded-full bg-blue-50 border-2 border-blue-400 flex items-center justify-center text-lg shadow-sm text-blue-600 font-serif">G</div>
+                        <span class="text-[10px] font-bold mt-1 block text-center text-slate-600">Glucose</span>
+                    </div>
+
+                    <div class="source-item group cursor-grab active:cursor-grabbing relative transition-transform hover:scale-105" onmousedown="startDragSpawn(event, 'fructose')" ontouchstart="startDragSpawn(event, 'fructose')">
+                        <div class="w-12 h-12 rounded-full bg-purple-50 border-2 border-purple-400 flex items-center justify-center text-lg shadow-sm text-purple-600 font-serif">F</div>
+                        <span class="text-[10px] font-bold mt-1 block text-center text-slate-600">Fructose</span>
+                    </div>
+
+                    <div class="source-item group cursor-grab active:cursor-grabbing relative transition-transform hover:scale-105" onmousedown="startDragSpawn(event, 'galactose')" ontouchstart="startDragSpawn(event, 'galactose')">
+                        <div class="w-12 h-12 rounded-full bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center text-lg shadow-sm text-yellow-600 font-serif">Ga</div>
+                        <span class="text-[10px] font-bold mt-1 block text-center text-slate-600">Galactose</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-10 h-px bg-slate-200 my-2"></div>
+
+            <!-- Catabolic Section -->
+            <div class="mb-4 flex flex-col items-center w-full">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">Catabolism<br><span class="text-[9px] normal-case font-normal text-slate-400">(Breaks Bonds)</span></h3>
+                
+                <div class="source-item group cursor-grab active:cursor-grabbing relative transition-transform hover:scale-105" onmousedown="startDragSpawn(event, 'water')" ontouchstart="startDragSpawn(event, 'water')">
+                    <div class="w-12 h-12 rounded-full bg-cyan-50 border-2 border-cyan-400 flex items-center justify-center text-lg shadow-sm text-cyan-600">H₂O</div>
+                    <span class="text-[10px] font-bold mt-1 block text-center text-slate-600">Hydrolysis</span>
+                </div>
+            </div>
+
+            <div class="mt-auto w-full px-3 pb-4">
+                 <button onclick="resetCanvas()" class="w-full border border-red-200 text-red-400 hover:bg-red-50 rounded py-2 text-[10px] font-bold uppercase tracking-wider transition">Reset Lab</button>
+            </div>
+        </aside>
+
+        <!-- Main Canvas Area -->
+        <main id="main-area" class="flex-grow relative bg-slate-100 overflow-hidden">
+            <!-- Grid Background -->
+            <div class="absolute inset-0 pointer-events-none opacity-5" 
+                 style="background-image: radial-gradient(#64748b 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+            <canvas id="labCanvas" class="block w-full h-full cursor-crosshair relative z-10"></canvas>
+
+            <!-- INSPECTOR PANEL (New Feature) -->
+            <div id="inspector-panel" class="absolute bottom-6 left-6 w-80 glass-panel rounded-xl p-5 shadow-2xl z-20 slide-enter border-l-4 border-slate-400 transition-colors duration-300">
+                <h4 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Molecule Inspector</h4>
+                <h2 id="inspector-name" class="text-2xl font-bold text-slate-800 mb-1">Empty Space</h2>
+                <p id="inspector-formula" class="text-xs font-mono text-slate-500 mb-3 bg-slate-100 inline-block px-2 py-0.5 rounded">--</p>
+                <div id="inspector-details" class="text-sm text-slate-600 leading-relaxed">
+                    Hover over a molecule to analyze its structure and biological function.
+                </div>
+            </div>
+
+            <!-- LEARN MODE OVERLAY -->
+            <div id="overlay-learn" class="absolute top-6 right-6 p-0 pointer-events-none flex flex-col items-end z-30">
+                <div class="glass-panel bg-white rounded-xl p-6 w-80 pointer-events-auto border-t-4 border-emerald-500 slide-enter shadow-xl">
+                    <div class="flex justify-between items-start mb-3">
+                        <h2 id="slide-title" class="text-lg font-bold text-slate-800 leading-tight">Welcome</h2>
+                        <span id="slide-counter" class="text-[10px] font-bold font-mono bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">1/9</span>
+                    </div>
+                    <div class="text-slate-600 text-sm leading-relaxed mb-5" id="slide-text"></div>
+                    
+                    <div class="flex gap-2 border-t border-slate-100 pt-4">
+                        <button onclick="prevSlide()" id="btn-prev" class="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">Back</button>
+                        <button onclick="loadSlide(0)" id="btn-restart" class="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold hidden">Restart</button>
+                        <button onclick="nextSlide()" id="btn-next" class="flex-grow px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transform active:scale-95 transition">Next &rarr;</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUILD MODE INFO -->
+            <div id="overlay-build" class="absolute inset-0 flex items-center justify-center bg-slate-900/60 z-40 hidden backdrop-blur-sm">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md text-center border-t-4 border-emerald-500 slide-enter">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🧪</div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Free Build Mode</h3>
+                    <p class="text-slate-600 mb-6 text-sm leading-relaxed">
+                        You have access to all monomers and the hydrolysis tool.<br><br>
+                        <strong>Try to build:</strong><br>
+                        • Starch (Amylose)<br>
+                        • Glycogen (Branched)<br>
+                        • Triglycerides (via Lipogenesis)
+                    </p>
+                    <button onclick="document.getElementById('overlay-build').style.display='none'" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg hover:shadow-emerald-500/30 transition transform hover:scale-105">Enter Lab</button>
+                </div>
+            </div>
+
+            <!-- QUIZ MODE OVERLAY -->
+            <div id="overlay-quiz" class="absolute top-6 left-1/2 transform -translate-x-1/2 pointer-events-none hidden z-30 w-full max-w-lg px-4">
+                <div class="bg-white/95 backdrop-blur shadow-2xl rounded-xl p-5 border-2 border-indigo-500 pointer-events-auto flex flex-col gap-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">AP Bio Challenge</span>
+                        <span id="quiz-score" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold">Score: 0</span>
+                    </div>
+                    <h3 id="quiz-question" class="text-lg font-bold text-indigo-900 leading-tight">Question loading...</h3>
+                    <div class="flex gap-2">
+                         <button onclick="checkQuiz()" class="flex-grow bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">Submit Structure</button>
+                    </div>
+                    <div id="quiz-feedback" class="text-xs text-center font-bold h-4 text-indigo-600"></div>
+                </div>
+            </div>
+
+            <!-- Notification Feed -->
+            <div id="notification-area" class="absolute bottom-6 right-6 w-80 flex flex-col gap-2 pointer-events-none z-50"></div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- Constants & Config ---
+        const HEX_RADIUS = 35; // Slightly smaller for better fit
+        const SNAP_DIST = 65;
+        const LIPOGENESIS_THRESHOLD = 9; // Lowered for better UX
+        
+        const COLORS = {
+            glucose: { fill: '#eff6ff', stroke: '#3b82f6', text: '#1d4ed8', name: 'Glucose' }, 
+            fructose: { fill: '#faf5ff', stroke: '#a855f7', text: '#7e22ce', name: 'Fructose' },
+            galactose: { fill: '#fefce8', stroke: '#eab308', text: '#a16207', name: 'Galactose' }, 
+            lipid: { fill: '#fff7ed', stroke: '#f97316', text: '#c2410c', name: 'Triglyceride' },
+            water: { fill: '#ecfeff', stroke: '#06b6d4', text: '#0e7490', name: 'Water' }
+        };
+
+        const STRUCTURE_INFO = {
+            'Glucose': { desc: "A monosaccharide. The primary energy source for cells. Product of photosynthesis.", formula: "C₆H₁₂O₆" },
+            'Fructose': { desc: "A monosaccharide found in many plants. Isomer of glucose (same formula, different structure).", formula: "C₆H₁₂O₆" },
+            'Galactose': { desc: "A monosaccharide. Usually found in nature combined with other sugars (e.g., in lactose).", formula: "C₆H₁₂O₆" },
+            'Maltose': { desc: "A disaccharide (Glucose + Glucose). Formed during starch breakdown.", formula: "C₁₂H₂₂O₁₁" },
+            'Sucrose': { desc: "A disaccharide (Glucose + Fructose). Table sugar. Main transport sugar in plants.", formula: "C₁₂H₂₂O₁₁" },
+            'Lactose': { desc: "A disaccharide (Glucose + Galactose). Found in milk.", formula: "C₁₂H₂₂O₁₁" },
+            'Amylose': { desc: "Unbranched Starch. A helical polymer of glucose. Plant energy storage.", formula: "(C₆H₁₀O₅)n" },
+            'Glycogen': { desc: "Branched polymer of glucose. Animal energy storage (Liver/Muscle). Highly branched for rapid release.", formula: "(C₆H₁₀O₅)n" },
+            'Triglyceride': { desc: "Lipid formed from excess sugars via De Novo Lipogenesis. Long term energy storage.", formula: "Lipid" }
+        };
+
+        // --- App State ---
+        let mode = 'learn'; 
+        let molecules = [];
+        let connections = [];
+        let particles = [];
+        let currentSlide = 0;
+        let quizScore = 0;
+        let quizCurrentTarget = null;
+        let activeQuizzes = []; 
+        
+        const canvas = document.getElementById('labCanvas');
+        const mainArea = document.getElementById('main-area'); 
+        const ctx = canvas.getContext('2d');
+        let draggedMol = null;
+        let dragOffset = {x:0, y:0};
+        
+        // Hover state for Inspector
+        let hoveredStructure = null;
+
+        // --- Learning Content ---
+        const slides = [
+            {
+                title: "1. Monomers",
+                text: "Carbohydrates are made of single sugar units called <strong>Monosaccharides</strong>.<br><br>• <span class='text-blue-600 font-bold'>Glucose</span>: Main fuel.<br>• <span class='text-purple-600 font-bold'>Fructose</span>: Fruit sugar.<br>• <span class='text-yellow-600 font-bold'>Galactose</span>: Milk sugar unit.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    spawnMol('glucose', c.x - 120, c.y);
+                    spawnMol('fructose', c.x, c.y);
+                    spawnMol('galactose', c.x + 120, c.y);
+                }
+            },
+            {
+                title: "2. Dehydration Synthesis",
+                text: "To build polymers, cells perform <strong>Dehydration Synthesis</strong>. This reaction joins two monomers and <em>removes</em> a water molecule.<br><br><strong>Task:</strong> Drag two Glucoses together to form a Glycosidic Bond.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    spawnMol('glucose', c.x - 80, c.y);
+                    spawnMol('glucose', c.x + 80, c.y);
+                }
+            },
+            {
+                title: "3. Hydrolysis",
+                text: "To break bonds (digestion), cells use <strong>Hydrolysis</strong>. This reaction <em>consumes</em> water to split the molecule.<br><br><strong>Task:</strong> Drag the <span class='text-cyan-600 font-bold'>Hydrolysis (H₂O)</span> tool from the sidebar onto the bond you just made.",
+                action: () => {
+                    // Ensure we have a bond to break if user reset or messed up
+                    if(connections.length === 0) {
+                        molecules = []; connections = [];
+                        const c = getCenter();
+                        let m1 = spawnMol('glucose', c.x - 50, c.y);
+                        let m2 = spawnMol('glucose', c.x + 50, c.y);
+                        forceBond(m1, m2, 'linear');
+                    }
+                }
+            },
+            {
+                title: "4. Sucrose (Transport)",
+                text: "Plants transport sugar as <strong>Sucrose</strong>.<br><br><strong>Task:</strong> Bond Glucose and Fructose.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    spawnMol('glucose', c.x - 80, c.y);
+                    spawnMol('fructose', c.x + 80, c.y);
+                }
+            },
+            {
+                title: "5. Lactose (Milk)",
+                text: "<strong>Lactose</strong> is the sugar in milk.<br><br><strong>Task:</strong> Bond Glucose and Galactose.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    spawnMol('glucose', c.x - 80, c.y);
+                    spawnMol('galactose', c.x + 80, c.y);
+                }
+            },
+            {
+                title: "6. Starch (Amylose)",
+                text: "Plants store energy as <strong>Starch</strong>. Amylose is a linear chain of glucose monomers.<br><br><strong>Task:</strong> Connect 6 glucoses in a line.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    for(let n=0; n<6; n++) spawnMol('glucose', c.x - 250 + (n*80), c.y + (Math.random()*20));
+                }
+            },
+            {
+                title: "7. Glycogen (Storage)",
+                text: "Animals store energy as <strong>Glycogen</strong>. It is highly <strong>branched</strong>, allowing enzymes to release glucose quickly.<br><br><strong>Task:</strong> Attach the loose glucoses to the TOP of the chain to create branches.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    let prev = null;
+                    for(let n=0; n<5; n++) {
+                        let m = spawnMol('glucose', c.x - 150 + (n*70), c.y + 60);
+                        if(prev) forceBond(prev, m, 'linear');
+                        prev = m;
+                    }
+                    spawnMol('glucose', c.x - 50, c.y - 60);
+                    spawnMol('glucose', c.x + 50, c.y - 60);
+                    spawnMol('glucose', c.x, c.y - 60);
+                }
+            },
+            {
+                title: "8. Lipogenesis",
+                text: "When glycogen stores are full, the liver converts excess glucose into fatty acids (Lipogenesis).<br><br><strong>Task:</strong> Pile up ('mash') a cluster of 10+ glucose molecules together to trigger conversion.",
+                action: () => {
+                    molecules = []; connections = [];
+                    const c = getCenter();
+                    for(let n=0; n<14; n++) spawnMol('glucose', c.x + (Math.random()*200-100), c.y + (Math.random()*200-100));
+                }
+            },
+            {
+                title: "Lab Ready",
+                text: "You are ready for the Challenge Mode.<br><br>Remember: <strong>Water out to build, Water in to break.</strong>",
+                action: () => {}
+            }
+        ];
+
+        const quizPool = [
+            { q: "Build Maltose (product of starch digestion).", check: (s) => s.names.includes("Maltose") },
+            { q: "Build Sucrose (plant transport sugar).", check: (s) => s.names.includes("Sucrose") },
+            { q: "Build Lactose (milk sugar).", check: (s) => s.names.includes("Lactose") },
+            { q: "Build Amylose (Linear Starch).", check: (s) => s.names.includes("Amylose") },
+            { q: "Build Glycogen (Branched Animal Storage).", check: (s) => s.names.includes("Glycogen") }
+        ];
+
+        // --- Classes ---
+
+        class Molecule {
+            constructor(type, x, y) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.isDragging = false;
+                this.bonds = { right: null, left: null, top: null, bottom: null }; 
+            }
+
+            draw(ctx) {
+                if (this.type === 'water') {
+                    this.drawWater(ctx);
+                    return;
+                }
+
+                const c = COLORS[this.type];
+                ctx.fillStyle = c.fill;
+                ctx.strokeStyle = c.stroke;
+                ctx.lineWidth = 2;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Shadow
+                ctx.shadowColor = "rgba(0,0,0,0.1)";
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 4;
+
+                if (this.type === 'lipid') {
+                    // Triglyceride representation (blob for now, but distinct)
+                    ctx.fillStyle = '#ffedd5';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, HEX_RADIUS * 1.2, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Simplified tails
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 10); ctx.quadraticCurveTo(-20, 40, -10, 60);
+                    ctx.moveTo(0, 10); ctx.quadraticCurveTo(10, 40, 0, 60);
+                    ctx.moveTo(10, 10); ctx.quadraticCurveTo(30, 40, 10, 60);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = c.text;
+                    ctx.font = "bold 10px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Lipid", 0, 0);
+
+                } else if (this.type === 'fructose') {
+                    // Pentagon
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (Math.PI * 2 * i / 5) - Math.PI/2;
+                        ctx.lineTo(Math.cos(angle) * HEX_RADIUS, Math.sin(angle) * HEX_RADIUS);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Hexagon
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3 * i);
+                        ctx.lineTo(Math.cos(angle) * HEX_RADIUS, Math.sin(angle) * HEX_RADIUS);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                if (this.type !== 'lipid') {
+                    ctx.fillStyle = c.text;
+                    ctx.font = "bold 12px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(c.name.substr(0,3), 0, 0); 
+                    
+                    // Chemical hints (OH groups implicitly) - simplified nodes
+                    this.drawNode(ctx, HEX_RADIUS*0.85, 0); // Right
+                    this.drawNode(ctx, -HEX_RADIUS*0.85, 0); // Left
+                    if (this.type !== 'fructose') this.drawNode(ctx, -HEX_RADIUS*0.45, -HEX_RADIUS*0.85); // Top
+                }
+
+                ctx.restore();
+            }
+
+            drawWater(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = '#ecfeff';
+                ctx.strokeStyle = '#06b6d4';
+                ctx.lineWidth = 2;
+                
+                // Mickey mouse shape for H2O
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI*2); // O
+                ctx.fill(); ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(-8, -8, 6, 0, Math.PI*2); // H
+                ctx.fill(); ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(8, -8, 6, 0, Math.PI*2); // H
+                ctx.fill(); ctx.stroke();
+                
+                ctx.restore();
+            }
+
+            drawNode(ctx, x, y) {
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        // --- Core Logic ---
+
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+            loadSlide(0);
+            updateInspector();
+            loop();
+        }
+
+        function getCenter() {
+            return { x: (canvas.width / 2) - 50, y: canvas.height / 2 };
+        }
+
+        function resize() {
+            canvas.width = mainArea.clientWidth; 
+            canvas.height = mainArea.clientHeight;
+        }
+
+        function spawnMol(type, x, y) {
+            const m = new Molecule(type, x, y);
+            molecules.push(m);
+            if(type !== 'water') spawnParticle(x, y, "✨");
+            return m;
+        }
+
+        function forceBond(m1, m2, type) {
+            if(type === 'linear') {
+                m1.bonds.right = m2.id;
+                m2.bonds.left = m1.id;
+                connections.push({a: m1.id, b: m2.id, type: 'linear'});
+            }
+        }
+
+        function startDragSpawn(e, type) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const m = spawnMol(type, cx - rect.left, cy - rect.top);
+            draggedMol = m;
+            m.isDragging = true;
+            dragOffset = {x: 0, y: 0}; 
+        }
+
+        function checkBonds(m) {
+            if (m.type === 'lipid' || m.type === 'water') return;
+
+            molecules.forEach(target => {
+                if (m.id === target.id || target.type === 'lipid' || target.type === 'water') return;
+
+                const dx = m.x - target.x;
+                const dy = m.y - target.y;
+                
+                // Linear Bond
+                if (Math.abs(dy) < 20 && dx > SNAP_DIST && dx < SNAP_DIST+25) {
+                    if (!target.bonds.right && !m.bonds.left) {
+                        bond(target, m, 'linear');
+                        m.x = target.x + SNAP_DIST + 15;
+                        m.y = target.y;
+                    }
+                }
+                else if (Math.abs(dy) < 20 && dx < -SNAP_DIST && dx > -(SNAP_DIST+25)) {
+                    if (!target.bonds.left && !m.bonds.right) {
+                        bond(m, target, 'linear');
+                        m.x = target.x - (SNAP_DIST + 15);
+                        m.y = target.y;
+                    }
+                }
+
+                // Branch Bond
+                if (Math.abs(dx + 15) < 20 && dy < -SNAP_DIST && dy > -(SNAP_DIST+25)) {
+                    if (!target.bonds.top && !m.bonds.bottom && target.type !== 'fructose') {
+                        bond(target, m, 'branch');
+                        m.x = target.x - 15; 
+                        m.y = target.y - SNAP_DIST - 10;
+                    }
+                }
+            });
+        }
+
+        function bond(m1, m2, type) {
+            if (type === 'linear') {
+                m1.bonds.right = m2.id;
+                m2.bonds.left = m1.id;
+            } else {
+                m1.bonds.top = m2.id;
+                m2.bonds.bottom = m1.id;
+            }
+            connections.push({a: m1.id, b: m2.id, type: type});
+            
+            // Dehydration Visuals
+            spawnParticle((m1.x+m2.x)/2, (m1.y+m2.y)/2 - 30, "+H₂O", "blue");
+            notify("Dehydration Synthesis: Water Removed");
+            checkLipogenesis(m1);
+        }
+
+        function performHydrolysis(waterMol) {
+            // Find closest bond
+            let closest = null;
+            let minD = 40;
+
+            connections.forEach((c, index) => {
+                const m1 = molecules.find(m => m.id === c.a);
+                const m2 = molecules.find(m => m.id === c.b);
+                if(m1 && m2) {
+                    const mx = (m1.x + m2.x) / 2;
+                    const my = (m1.y + m2.y) / 2;
+                    const d = Math.sqrt((waterMol.x - mx)**2 + (waterMol.y - my)**2);
+                    if (d < minD) {
+                        minD = d;
+                        closest = { idx: index, m1, m2, type: c.type };
+                    }
+                }
+            });
+
+            if (closest) {
+                // Break Bond
+                connections.splice(closest.idx, 1);
+                
+                // Update pointers
+                const m1 = closest.m1;
+                const m2 = closest.m2;
+                if (closest.type === 'linear') {
+                    if(m1.bonds.right === m2.id) m1.bonds.right = null;
+                    if(m2.bonds.left === m1.id) m2.bonds.left = null;
+                } else {
+                    if(m1.bonds.top === m2.id) m1.bonds.top = null;
+                    if(m2.bonds.bottom === m1.id) m2.bonds.bottom = null;
+                }
+
+                spawnParticle((m1.x+m2.x)/2, (m1.y+m2.y)/2 - 20, "-H₂O", "cyan");
+                notify("Hydrolysis: Water Consumed to Break Bond", "cyan");
+                
+                // Remove water molecule
+                molecules = molecules.filter(m => m.id !== waterMol.id);
+                draggedMol = null;
+            } else {
+                // Water evaporates if not used
+                molecules = molecules.filter(m => m.id !== waterMol.id);
+                draggedMol = null;
+                notify("Water evaporated (Missed bond target)", "slate");
+            }
+        }
+
+        // Original check for bonded groups
+        function checkLipogenesis(targetMol) {
+            const group = getConnectedGroup(targetMol);
+            if (group.length >= LIPOGENESIS_THRESHOLD && (mode === 'learn' || mode === 'build')) {
+                transformToLipid(group);
+            }
+        }
+
+        // New check for proximity clusters (mashed piles)
+        function checkProximityCluster(centerMol) {
+            // Only glucose clusters turn to fat here
+            if (centerMol.type !== 'glucose') return;
+            
+            // Only in Build or Lipogenesis slide
+            const isLipoSlide = slides[currentSlide] && slides[currentSlide].title.includes("Lipogenesis");
+            if (mode !== 'build' && !isLipoSlide) return;
+
+            const detectionRadius = 160; 
+            
+            // Find all glucose molecules nearby
+            const neighbors = molecules.filter(m => {
+                if (m.type !== 'glucose') return false;
+                const d = Math.sqrt((m.x - centerMol.x) ** 2 + (m.y - centerMol.y) ** 2);
+                return d < detectionRadius;
+            });
+
+            if (neighbors.length >= LIPOGENESIS_THRESHOLD) {
+                transformToLipid(neighbors);
+            }
+        }
+
+        function transformToLipid(group) {
+            const center = {x:0, y:0};
+            group.forEach(m => { center.x += m.x; center.y += m.y; });
+            center.x /= group.length;
+            center.y /= group.length;
+
+            molecules = molecules.filter(m => !group.includes(m));
+            connections = connections.filter(c => !group.some(m => m.id === c.a || m.id === c.b));
+
+            spawnMol('lipid', center.x, center.y);
+            notify("Excess Glucose converted to Triglyceride!", "orange");
+            for(let k=0; k<8; k++) spawnParticle(center.x + (Math.random()*40-20), center.y, "✨");
+        }
+
+        function getConnectedGroup(startMol) {
+            if (!startMol) return [];
+            let group = [startMol];
+            let queue = [startMol];
+            let visited = new Set([startMol.id]);
+
+            while(queue.length > 0) {
+                let curr = queue.shift();
+                connections.forEach(c => {
+                    let neighborId = null;
+                    if (c.a === curr.id) neighborId = c.b;
+                    else if (c.b === curr.id) neighborId = c.a;
+
+                    if (neighborId && !visited.has(neighborId)) {
+                        let m = molecules.find(mol => mol.id === neighborId);
+                        if (m) {
+                            visited.add(neighborId);
+                            group.push(m);
+                            queue.push(m);
+                        }
+                    }
+                });
+            }
+            return group;
+        }
+
+        function identifyStructures() {
+            let structures = [];
+            let visitedIds = new Set();
+
+            molecules.forEach(startNode => {
+                if (visitedIds.has(startNode.id) || startNode.type === 'water') return;
+
+                if (startNode.type === 'lipid') {
+                     structures.push({ name: "Triglyceride", nodes: [startNode] });
+                     visitedIds.add(startNode.id);
+                     return;
+                }
+
+                const group = getConnectedGroup(startNode);
+                group.forEach(m => visitedIds.add(m.id));
+
+                const types = group.map(m => m.type);
+                const groupIds = new Set(group.map(m => m.id));
+                const groupBonds = connections.filter(c => groupIds.has(c.a) && groupIds.has(c.b));
+                const branches = groupBonds.filter(c => c.type === 'branch').length;
+                
+                let name = "Unknown Polysaccharide";
+
+                if (group.length === 1) {
+                    if (types[0] === 'glucose') name = "Glucose";
+                    else if (types[0] === 'fructose') name = "Fructose";
+                    else if (types[0] === 'galactose') name = "Galactose";
+                }
+                else if (group.length === 2) {
+                    const pair = types.sort().join('-');
+                    if (pair === 'fructose-glucose') name = "Sucrose";
+                    else if (pair === 'galactose-glucose') name = "Lactose";
+                    else if (pair === 'glucose-glucose') name = "Maltose";
+                } 
+                else if (group.length > 2) {
+                    const allGlucose = types.every(t => t === 'glucose');
+                    if (allGlucose) {
+                        if (branches === 0) name = "Amylose";
+                        else name = "Glycogen";
+                    }
+                }
+                structures.push({ name, nodes: group });
+            });
+            
+            return { structures, names: structures.map(s => s.name) };
+        }
+
+        // --- Interactions ---
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: cx - rect.left, y: cy - rect.top };
+        }
+
+        function handleInputStart(e) {
+            const pos = getMousePos(e);
+            
+            // Check molecules
+            let closestDist = Infinity;
+            let target = null;
+            molecules.forEach(m => {
+                const dist = Math.sqrt((pos.x - m.x) ** 2 + (pos.y - m.y) ** 2);
+                if (dist < HEX_RADIUS * 1.5 && dist < closestDist) {
+                    closestDist = dist;
+                    target = m;
+                }
+            });
+
+            if (target) {
+                draggedMol = target;
+                dragOffset = {x: pos.x - target.x, y: pos.y - target.y};
+                target.isDragging = true;
+                
+                if (target.type !== 'water') {
+                     // Mechanical break logic (existing)
+                     const hadBonds = connections.some(c => c.a === target.id || c.b === target.id);
+                     if(hadBonds) {
+                        connections = connections.filter(c => c.a !== target.id && c.b !== target.id);
+                        target.bonds = { right: null, left: null, top: null, bottom: null };
+                        molecules.forEach(n => {
+                            if(n.bonds.right === target.id) n.bonds.right = null;
+                            if(n.bonds.left === target.id) n.bonds.left = null;
+                            if(n.bonds.top === target.id) n.bonds.top = null;
+                            if(n.bonds.bottom === target.id) n.bonds.bottom = null;
+                        });
+                     }
+                }
+            }
+        }
+
+        function handleInputMove(e) {
+            const pos = getMousePos(e);
+            
+            // Highlight hover for Inspector
+            const target = molecules.find(m => Math.sqrt((pos.x - m.x)**2 + (pos.y - m.y)**2) < HEX_RADIUS);
+            if (target) {
+                updateInspector(target);
+                canvas.style.cursor = 'grab';
+            } else {
+                // Check if hovering a bond
+                canvas.style.cursor = 'default';
+            }
+
+            if (!draggedMol) return;
+
+            e.preventDefault();
+            canvas.style.cursor = 'grabbing';
+            draggedMol.x = pos.x - dragOffset.x;
+            draggedMol.y = pos.y - dragOffset.y;
+        }
+
+        function handleInputEnd(e) {
+            if (draggedMol) {
+                draggedMol.isDragging = false;
+                
+                if (draggedMol.type === 'water') {
+                    performHydrolysis(draggedMol);
+                } else {
+                    checkBonds(draggedMol);
+                    // Check if we created a pile of glucose
+                    checkProximityCluster(draggedMol);
+                }
+                
+                draggedMol = null;
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleInputStart);
+        canvas.addEventListener('mousemove', handleInputMove);
+        canvas.addEventListener('mouseup', handleInputEnd);
+        canvas.addEventListener('touchstart', handleInputStart, {passive: false});
+        canvas.addEventListener('touchmove', handleInputMove, {passive: false});
+        canvas.addEventListener('touchend', handleInputEnd);
+
+        // --- Inspector Logic ---
+        function updateInspector(mol = null) {
+            const panelName = document.getElementById('inspector-name');
+            const panelDesc = document.getElementById('inspector-details');
+            const panelForm = document.getElementById('inspector-formula');
+            const panel = document.getElementById('inspector-panel');
+
+            if (!mol) {
+                // Default state or last known
+                // Don't clear immediately to avoid flickering
+                return;
+            }
+
+            // Find the structure this molecule belongs to
+            const analysis = identifyStructures();
+            const structure = analysis.structures.find(s => s.nodes.some(n => n.id === mol.id));
+
+            if (structure) {
+                const info = STRUCTURE_INFO[structure.name] || { desc: "A carbohydrate structure.", formula: "Cx(H₂O)y" };
+                
+                panelName.innerText = structure.name;
+                panelDesc.innerText = info.desc;
+                panelForm.innerText = info.formula;
+                
+                // Visual tint based on type
+                if(structure.name.includes("Starch") || structure.name.includes("Amylose")) panel.style.borderLeftColor = "#22c55e";
+                else if(structure.name.includes("Glycogen")) panel.style.borderLeftColor = "#a855f7";
+                else panel.style.borderLeftColor = "#94a3b8";
+            }
+        }
+
+        // --- UI Helpers ---
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('overlay-learn').style.display = m === 'learn' ? 'flex' : 'none';
+            document.getElementById('overlay-quiz').style.display = m === 'quiz' ? 'block' : 'none';
+            document.getElementById('overlay-build').style.display = m === 'build' ? 'flex' : 'none';
+            
+            ['learn', 'build', 'quiz'].forEach(k => {
+                 const btn = document.getElementById('btn-' + k);
+                 if(k===m) {
+                     btn.classList.remove('bg-slate-800', 'text-slate-300');
+                     btn.classList.add('bg-emerald-600', 'text-white');
+                 } else {
+                     btn.classList.add('hover:bg-slate-700', 'text-slate-300');
+                     btn.classList.remove('bg-emerald-600', 'text-white');
+                 }
+            });
+
+            if (m === 'quiz') {
+                activeQuizzes = [...quizPool];
+                // Shuffle
+                for (let i = activeQuizzes.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [activeQuizzes[i], activeQuizzes[j]] = [activeQuizzes[j], activeQuizzes[i]];
+                }
+                loadQuiz(0);
+            }
+            if (m === 'build') resetCanvas();
+            if (m === 'learn') loadSlide(currentSlide);
+        }
+
+        function loadSlide(idx) {
+            currentSlide = idx;
+            const s = slides[idx];
+            document.getElementById('slide-title').innerText = s.title;
+            document.getElementById('slide-text').innerHTML = s.text;
+            document.getElementById('slide-counter').innerText = `${idx+1}/${slides.length}`;
+            document.getElementById('btn-prev').disabled = idx === 0;
+            document.getElementById('btn-next').innerHTML = idx === slides.length-1 ? "Finish" : "Next &rarr;";
+            
+            const restartBtn = document.getElementById('btn-restart');
+            restartBtn.style.display = (idx === slides.length - 1) ? 'block' : 'none';
+
+            s.action();
+        }
+        
+        function nextSlide() { 
+            if (currentSlide < slides.length - 1) {
+                loadSlide(currentSlide + 1);
+            } else {
+                setMode('build');
+            }
+        }
+        function prevSlide() { if (currentSlide > 0) loadSlide(currentSlide - 1); }
+
+        function loadQuiz(idx) {
+            if (idx >= activeQuizzes.length) {
+                document.getElementById('quiz-question').innerText = "All Challenges Completed!";
+                return;
+            }
+            quizCurrentTarget = activeQuizzes[idx];
+            document.getElementById('quiz-question').innerText = `${idx+1}. ${quizCurrentTarget.q}`;
+            resetCanvas();
+        }
+
+        function checkQuiz() {
+            if (!quizCurrentTarget) return;
+            const stats = identifyStructures();
+            if (quizCurrentTarget.check(stats)) {
+                quizScore += 10;
+                document.getElementById('quiz-score').innerText = `Score: ${quizScore}`;
+                notify("Correct Structure!", "green");
+                setTimeout(() => loadQuiz(activeQuizzes.indexOf(quizCurrentTarget) + 1), 1500);
+            } else {
+                notify("Incorrect. Check connections and types.", "red");
+            }
+        }
+
+        function resetCanvas() {
+            molecules = []; connections = []; particles = [];
+        }
+
+        function notify(msg, color='blue') {
+            const area = document.getElementById('notification-area');
+            const el = document.createElement('div');
+            
+            let colorClass = 'border-blue-500 text-blue-700';
+            if (color === 'green') colorClass = 'border-green-500 text-green-700';
+            else if (color === 'red') colorClass = 'border-red-500 text-red-700';
+            else if (color === 'orange') colorClass = 'border-orange-500 text-orange-800 bg-orange-50';
+            else if (color === 'cyan') colorClass = 'border-cyan-500 text-cyan-700';
+            else if (color === 'slate') colorClass = 'border-slate-500 text-slate-600';
+
+            el.className = `bg-white p-3 rounded shadow-md border-l-4 ${colorClass} text-xs font-bold fade-in`;
+            el.innerHTML = msg;
+            area.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        function spawnParticle(x, y, text, colorName="blue") {
+            particles.push({x, y, text, alpha: 1, dy: -1.5, color: colorName});
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Bonds with Oxygen Bridge
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            connections.forEach(c => {
+                const m1 = molecules.find(m => m.id === c.a);
+                const m2 = molecules.find(m => m.id === c.b);
+                if (m1 && m2) {
+                    const midX = (m1.x + m2.x) / 2;
+                    const midY = (m1.y + m2.y) / 2;
+
+                    // Bond Lines
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.beginPath();
+                    ctx.moveTo(m1.x, m1.y);
+                    ctx.lineTo(m2.x, m2.y);
+                    ctx.stroke();
+
+                    // Oxygen Atom in the middle
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.strokeStyle = '#ef4444'; // Red for Oxygen
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(midX, midY, 6, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ef4444';
+                    ctx.font = "bold 8px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("O", midX, midY);
+                }
+            });
+
+            molecules.forEach(m => m.draw(ctx));
+
+            // Particles
+            ctx.font = "bold 14px sans-serif";
+            for(let i=particles.length-1; i>=0; i--) {
+                const p = particles[i];
+                p.y += p.dy;
+                p.alpha -= 0.015;
+                
+                ctx.fillStyle = p.color === 'cyan' ? `rgba(6,182,212,${p.alpha})` : `rgba(59,130,246,${p.alpha})`;
+                if(p.color === 'orange') ctx.fillStyle = `rgba(249,115,22,${p.alpha})`;
+                
+                ctx.fillText(p.text, p.x, p.y);
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
